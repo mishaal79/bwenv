@@ -7,8 +7,8 @@ use bwenv::Result;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Initialize logging
-    bwenv::logging::init()?;
+    // Initialize logging (will be called from CLI run when implemented)
+    // bwenv::logging::initialize()?;
 
     // Run CLI
     cli::run().await

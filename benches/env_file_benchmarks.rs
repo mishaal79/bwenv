@@ -1,4 +1,4 @@
-use bwenv::env_file::{read_env_file, validate_env_file, write_env_file};
+use bwenv::env::parser::{read_env_file, validate_env_file, write_env_file};
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use std::collections::HashMap;
 use std::fs;
@@ -84,7 +84,8 @@ fn bench_write_small_env_file(c: &mut Criterion) {
         b.iter(|| {
             let temp_dir = tempdir().unwrap();
             let file_path = temp_dir.path().join("output.env");
-            black_box(write_env_file(&file_path, &env_vars, false).unwrap());
+            write_env_file(&file_path, &env_vars, false).unwrap();
+            black_box(());
         })
     });
 }
@@ -96,7 +97,8 @@ fn bench_write_medium_env_file(c: &mut Criterion) {
         b.iter(|| {
             let temp_dir = tempdir().unwrap();
             let file_path = temp_dir.path().join("output.env");
-            black_box(write_env_file(&file_path, &env_vars, false).unwrap());
+            write_env_file(&file_path, &env_vars, false).unwrap();
+            black_box(());
         })
     });
 }
@@ -108,7 +110,8 @@ fn bench_write_large_env_file(c: &mut Criterion) {
         b.iter(|| {
             let temp_dir = tempdir().unwrap();
             let file_path = temp_dir.path().join("output.env");
-            black_box(write_env_file(&file_path, &env_vars, false).unwrap());
+            write_env_file(&file_path, &env_vars, false).unwrap();
+            black_box(());
         })
     });
 }
@@ -122,7 +125,8 @@ fn bench_validate_small_env_file(c: &mut Criterion) {
 
     c.bench_function("validate_small_env_file", |b| {
         b.iter(|| {
-            black_box(validate_env_file(&file_path).unwrap());
+            validate_env_file(&file_path).unwrap();
+            black_box(());
         })
     });
 }
@@ -136,7 +140,8 @@ fn bench_validate_large_env_file(c: &mut Criterion) {
 
     c.bench_function("validate_large_env_file", |b| {
         b.iter(|| {
-            black_box(validate_env_file(&file_path).unwrap());
+            validate_env_file(&file_path).unwrap();
+            black_box(());
         })
     });
 }
@@ -167,7 +172,8 @@ fn bench_merge_operations(c: &mut Criterion) {
 
             // Write base, then merge
             write_env_file(&file_path, &base_vars, false).unwrap();
-            black_box(write_env_file(&file_path, &new_vars, true).unwrap());
+            write_env_file(&file_path, &new_vars, true).unwrap();
+            black_box(());
         })
     });
 }

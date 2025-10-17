@@ -1,4 +1,4 @@
-use bwenv::env_file::{read_env_file, validate_env_file, write_env_file};
+use bwenv::env::parser::{read_env_file, validate_env_file, write_env_file};
 use proptest::prelude::*;
 use std::collections::HashMap;
 use std::fs;
