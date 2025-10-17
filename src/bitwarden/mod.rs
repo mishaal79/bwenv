@@ -2,22 +2,15 @@
 //!
 //! Provides high-level API for interacting with Bitwarden Secrets Manager.
 
-use crate::Result;
+pub mod provider;
+pub mod sdk_provider;
 
-pub struct SecretsManagerClient {
-    // TODO: Integrate bitwarden crate SDK
-}
+#[cfg(test)]
+pub mod mock_provider;
 
-impl SecretsManagerClient {
-    pub async fn new(_access_token: String) -> Result<Self> {
-        todo!("SDK client initialization pending")
-    }
+// Re-export commonly used types
+pub use provider::{Project, Secret, SecretsProvider};
+pub use sdk_provider::SdkProvider;
 
-    pub async fn get_secrets(&self, _project_id: &str) -> Result<Vec<(String, String)>> {
-        todo!("Get secrets implementation pending")
-    }
-
-    pub async fn set_secret(&self, _project_id: &str, _key: &str, _value: &str) -> Result<()> {
-        todo!("Set secret implementation pending")
-    }
-}
+#[cfg(test)]
+pub use mock_provider::MockProvider;

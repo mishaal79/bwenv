@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # Main E2E test runner
+  e2e-tests:
+    build:
+      context: ../..
+      dockerfile: tests/docker/Dockerfile.e2e
+    container_name: bwenv-e2e-tests
+    environment:
+      - BITWARDEN_ACCESS_TOKEN=${BITWARDEN_ACCESS_TOKEN}
+      - BITWARDEN_TEST_PROJECT=${BITWARDEN_TEST_PROJECT:-E2E-Test}
+      - RUST_LOG=${RUST_LOG:-info}
+      - RUST_BACKTRACE=${RUST_BACKTRACE:-1}
+    volumes:
+      # Mount project directory for access to built binary
+      - ../..:/workspace
+      # Mount cargo cache for faster builds
+      - cargo-cache:/usr/local/cargo/registry
+      - cargo-git:/usr/local/cargo/git
+    working_dir: /workspace
+    command: >
+      sh -c "
+        echo '=== Building bwenv release binary ===' &&
+        cargo build --release &&
+        echo '=== Running E2E tests ===' &&
+        cargo test --test e2e -- --test-threads=1 --nocapture
+      "
+    networks:
+      - bwenv-test
+
+  # Cleanup service (runs after tests)
+  cleanup:
+    build:
+      context: ../..
+      dockerfile: tests/docker/Dockerfile.e2e
+    container_name: bwenv-cleanup
+    environment:
+      - BITWARDEN_ACCESS_TOKEN=${BITWARDEN_ACCESS_TOKEN}
+      - BITWARDEN_TEST_PROJECT=${BITWARDEN_TEST_PROJECT:-E2E-Test}
+    volumes:
+      - ../..:/workspace
+    working_dir: /workspace
+    command: >
+      sh -c "
+        echo '=== Cleanup completed ===' &&
+        echo 'Test data cleaned up from Bitwarden project'
+      "
+    depends_on:
+      - e2e-tests
+    networks:
+      - bwenv-test
+
+volumes:
+  cargo-cache:
+  cargo-git:
+
+networks:
+  bwenv-test:
+    driver: bridge

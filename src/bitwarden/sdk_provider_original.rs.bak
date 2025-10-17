@@ -1,0 +1,271 @@
+//! SDK-based SecretsProvider implementation
+//!
+//! Production implementation using the Bitwarden Rust SDK
+//!
+//! NOTE: This is a stub implementation that requires manual integration with the actual
+//! Bitwarden SDK. The SDK API differs significantly from initial assumptions.
+//!
+//! **IMPLEMENTATION STATUS**: Partially implemented - requires SDK-specific adjustments
+//!
+//! To complete the implementation:
+//! 1. Review official Bitwarden SDK documentation at https://github.com/bitwarden/sdk
+//! 2. Update authentication flow to match AccessTokenLoginRequest structure
+//! 3. Implement correct request/response structures for:
+//!    - ProjectsClient and SecretsClient methods
+//!    - Secret list responses (currently returns identifiers only, need full secrets)
+//!    - Organization ID resolution for create/update operations
+//! 4. Test integration with real Bitwarden Secrets Manager account
+//! 5. Add proper error handling for SDK-specific errors
+//!
+//! **FOR TESTING**: Use `MockProvider` which provides a complete, working implementation
+//! that doesn't require external dependencies.
+
+use async_trait::async_trait;
+
+use super::provider::{Project, Secret, SecretsProvider};
+use crate::{AppError, Result};
+
+/// SDK-based implementation of SecretsProvider
+pub struct SdkProvider {
+    client: Client,
+    _access_token: String,
+}
+
+impl SdkProvider {
+    /// Create a new SDK provider with an access token
+    ///
+    /// NOTE: This requires adjustment to match the actual SDK authentication API
+    pub async fn new(access_token: String) -> Result<Self> {
+        let client = Client::new(None);
+
+        // Authenticate with the access token
+        // NOTE: The actual SDK API requires AccessTokenLoginRequest
+        let request = AccessTokenLoginRequest {
+            access_token: access_token.clone(),
+            state_file: None,
+        };
+
+        client
+            .auth()
+            .login_access_token(&request)
+            .await
+            .map_err(|_| AppError::BitwardenAuthFailed)?;
+
+        Ok(Self {
+            client,
+            _access_token: access_token,
+        })
+    }
+}
+
+#[async_trait]
+impl SecretsProvider for SdkProvider {
+    async fn list_projects(&self) -> Result<Vec<Project>> {
+        // NOTE: Stub implementation - requires actual SDK integration
+        let response = self
+            .client
+            .projects()
+            .list(None)
+            .await
+            .map_err(|e| AppError::Unknown(format!("Failed to list projects: {:?}", e)))?;
+
+        Ok(response
+            .data
+            .into_iter()
+            .map(|p| Project {
+                id: p.id.to_string(),
+                name: p.name,
+                organization_id: p.organization_id.to_string(),
+            })
+            .collect())
+    }
+
+    async fn get_project(&self, project_id: &str) -> Result<Option<Project>> {
+        let uuid = project_id
+            .parse()
+            .map_err(|_| AppError::InvalidArguments("Invalid project ID format".to_string()))?;
+
+        match self.client.projects().get(&uuid).await {
+            Ok(project) => Ok(Some(Project {
+                id: project.id.to_string(),
+                name: project.name,
+                organization_id: project.organization_id.to_string(),
+            })),
+            Err(_) => Ok(None),
+        }
+    }
+
+    async fn get_project_by_name(&self, name: &str) -> Result<Option<Project>> {
+        let projects = self.list_projects().await?;
+        Ok(projects.into_iter().find(|p| p.name == name))
+    }
+
+    async fn list_secrets(&self, project_id: &str) -> Result<Vec<Secret>> {
+        let _uuid = project_id
+            .parse::<uuid::Uuid>()
+            .map_err(|_| AppError::InvalidArguments("Invalid project ID format".to_string()))?;
+
+        let response = self
+            .client
+            .secrets()
+            .list(None)
+            .await
+            .map_err(|e| AppError::Unknown(format!("Failed to list secrets: {:?}", e)))?;
+
+        // Filter secrets by project ID
+        Ok(response
+            .data
+            .into_iter()
+            .filter(|s| s.project_id.as_ref().map(|id| id.to_string()) == Some(project_id.to_string()))
+            .map(|s| Secret {
+                id: s.id.to_string(),
+                key: s.key,
+                value: s.value,
+                note: s.note,
+                project_id: s.project_id.map(|id| id.to_string()).unwrap_or_default(),
+            })
+            .collect())
+    }
+
+    async fn get_secret(&self, secret_id: &str) -> Result<Option<Secret>> {
+        let uuid = secret_id
+            .parse()
+            .map_err(|_| AppError::InvalidArguments("Invalid secret ID format".to_string()))?;
+
+        match self.client.secrets().get(&uuid).await {
+            Ok(secret) => Ok(Some(Secret {
+                id: secret.id.to_string(),
+                key: secret.key,
+                value: secret.value,
+                note: secret.note,
+                project_id: secret.project_id.map(|id| id.to_string()).unwrap_or_default(),
+            })),
+            Err(_) => Ok(None),
+        }
+    }
+
+    async fn create_secret(
+        &self,
+        project_id: &str,
+        key: &str,
+        value: &str,
+        note: Option<&str>,
+    ) -> Result<Secret> {
+        let project_uuid = project_id
+            .parse()
+            .map_err(|_| AppError::InvalidArguments("Invalid project ID format".to_string()))?;
+
+        // NOTE: The actual SDK API may have different field requirements
+        // Get the organization_id from the project first
+        let project = self.get_project(project_id).await?
+            .ok_or_else(|| AppError::ItemNotFound(format!("Project not found: {}", project_id)))?;
+
+        let org_uuid = project.organization_id.parse()
+            .map_err(|_| AppError::InvalidArguments("Invalid organization ID format".to_string()))?;
+
+        let request = SecretCreateRequest {
+            key: key.to_string(),
+            value: value.to_string(),
+            note: note.map(|s| s.to_string()).unwrap_or_default(),
+            organization_id: org_uuid,
+            project_ids: Some(vec![project_uuid]),
+        };
+
+        let response = self
+            .client
+            .secrets()
+            .create(&request)
+            .await
+            .map_err(|e| AppError::Unknown(format!("Failed to create secret: {:?}", e)))?;
+
+        Ok(Secret {
+            id: response.id.to_string(),
+            key: response.key,
+            value: response.value,
+            note: Some(response.note),
+            project_id: project_id.to_string(),
+        })
+    }
+
+    async fn update_secret(
+        &self,
+        secret_id: &str,
+        key: &str,
+        value: &str,
+        note: Option<&str>,
+    ) -> Result<Secret> {
+        let uuid = secret_id
+            .parse()
+            .map_err(|_| AppError::InvalidArguments("Invalid secret ID format".to_string()))?;
+
+        // Get the existing secret to preserve project associations
+        let existing = self
+            .get_secret(secret_id)
+            .await?
+            .ok_or_else(|| AppError::ItemNotFound(secret_id.to_string()))?;
+
+        // Get organization ID
+        let project = self.get_project(&existing.project_id).await?
+            .ok_or_else(|| AppError::ItemNotFound(format!("Project not found: {}", existing.project_id)))?;
+
+        let org_uuid = project.organization_id.parse()
+            .map_err(|_| AppError::InvalidArguments("Invalid organization ID format".to_string()))?;
+
+        let request = SecretPutRequest {
+            id: uuid,
+            key: key.to_string(),
+            value: value.to_string(),
+            note: note.map(|s| s.to_string()).unwrap_or_default(),
+            organization_id: org_uuid,
+            project_ids: Some(vec![existing.project_id.parse().unwrap()]),
+        };
+
+        let response = self
+            .client
+            .secrets()
+            .update(&uuid, &request)
+            .await
+            .map_err(|e| AppError::Unknown(format!("Failed to update secret: {:?}", e)))?;
+
+        Ok(Secret {
+            id: response.id.to_string(),
+            key: response.key,
+            value: response.value,
+            note: Some(response.note),
+            project_id: existing.project_id,
+        })
+    }
+
+    async fn delete_secret(&self, secret_id: &str) -> Result<()> {
+        let uuid = secret_id
+            .parse()
+            .map_err(|_| AppError::InvalidArguments("Invalid secret ID format".to_string()))?;
+
+        self.client
+            .secrets()
+            .delete(&[uuid])
+            .await
+            .map_err(|e| AppError::Unknown(format!("Failed to delete secret: {:?}", e)))?;
+
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    #[ignore] // Requires valid access token and network access
+    async fn test_sdk_provider_creation() {
+        // This test is marked as ignore because it requires a real access token
+        // In actual usage, you would use a test token from environment
+        let token = std::env::var("BITWARDEN_ACCESS_TOKEN").unwrap_or_default();
+        if token.is_empty() {
+            return;
+        }
+
+        let provider = SdkProvider::new(token).await;
+        assert!(provider.is_ok());
+    }
+}
