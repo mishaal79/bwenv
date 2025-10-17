@@ -1,0 +1,17 @@
+# Enhanced linting configuration for bwenv
+# Run with: cargo clippy --all-targets -- -D warnings
+#
+# Philosophy: Conservative enhancement - configure thresholds and allowed patterns.
+# Use -W or -D flags in CI/pre-commit for enforcement.
+
+# Cognitive complexity threshold
+cognitive-complexity-threshold = 15
+
+# Maximum function parameters
+too-many-arguments-threshold = 7
+
+# Type complexity threshold
+type-complexity-threshold = 250
+
+# Allow certain wildcard imports (add specific modules as needed)
+# allowed-wildcard-imports = []

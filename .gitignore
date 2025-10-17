@@ -9,6 +9,14 @@ Cargo.lock
 .env
 *.env
 
+# E2E test environment (contains secrets)
+.env.test
+
+# Test artifacts
+tests/e2e/output/
+*.env.bak
+.test-*
+
 # IDE and editor folders
 .idea/
 .vscode/

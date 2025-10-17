@@ -1,317 +1,669 @@
 # bwenv
 
-A Rust-based CLI tool that helps you securely manage your `.env` file secrets using Bitwarden.
+**Secure `.env` file management for developers who hate complexity.**
 
-## Overview
+A fast, simple CLI built on Bitwarden Secrets Manager SDK. Sync your environment variables across teams without the enterprise overhead.
 
-This tool leverages your existing Bitwarden desktop app session to store and retrieve environment variables from `.env` files. It's designed for developers who want to securely share project configuration between team members or across different environments.
+[![Built with Rust](https://img.shields.io/badge/built%20with-Rust-orange.svg)](https://www.rust-lang.org/)
+[![Bitwarden SDK](https://img.shields.io/badge/powered%20by-Bitwarden%20SDK-175DDC)](https://bitwarden.com/products/secrets-manager/)
+
+## Why bwenv?
+
+- 🚀 **5-minute setup** (vs 30min - 4 hours for competitors)
+- 🆓 **Free tier that works** (full features, forever)
+- 🔍 **Drift detection** (see exactly what's out of sync)
+- 🎯 **6 commands** (vs 15-20 for enterprise tools)
+- 🔒 **Zero-knowledge encryption** (via Bitwarden)
 
 ## Features
 
-- Uses your existing Bitwarden desktop app authentication
-- Stores `.env` file contents as secure notes in your Bitwarden vault
-- Organizes secrets by project or environment using Bitwarden folders
-- Retrieves secrets and generates `.env` files
-- Supports merging with existing `.env` files
-- Comprehensive logging with configurable verbosity levels
+### ✅ Simple .env Workflow
+- **Push** local `.env` to Bitwarden
+- **Pull** secrets from Bitwarden to `.env`
+- **Status** command shows drift (local vs remote)
+- **Validate** .env format before pushing
+
+### ✅ Built on Bitwarden Secrets Manager
+- Uses official Rust SDK (not CLI wrapper)
+- Leverages Bitwarden's battle-tested security
+- Works with Bitwarden Cloud or self-hosted
+- End-to-end encryption (zero-knowledge)
+
+### ✅ Developer Experience
+- Single 3.3MB binary (no dependencies)
+- Works offline (after initial pull)
+- Git-friendly (never commit secrets)
+- Drift detection (know what changed)
+- 72 unit tests + 20 E2E tests
+
+### ✅ Team Collaboration
+- Share secrets via Bitwarden projects
+- Onboard teammates with one command
+- Organization support (via Bitwarden orgs)
+- RBAC through Bitwarden (if self-hosted)
 
 ## Prerequisites
 
-- [Rust](https://www.rust-lang.org/tools/install) (for building from source)
-- [Bitwarden Desktop App](https://bitwarden.com/download/) (installed and logged in)
-- [Bitwarden CLI](https://bitwarden.com/help/cli/) (installed and available in your PATH)
+- **Bitwarden Account** - [Sign up free](https://vault.bitwarden.com)
+- **Secrets Manager Access** - [Enable free tier](https://bitwarden.com/products/secrets-manager/)
+- **Access Token** - Generate from Bitwarden Settings → Security
+
+**No Bitwarden CLI needed!** bwenv uses the official Rust SDK directly.
 
 ## Installation
 
+### Cargo (Recommended)
+
+```bash
+cargo install bwenv
+```
+
+### Homebrew (macOS/Linux) - Coming Soon
+
+```bash
+brew install bwenv
+```
+
 ### From Source
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/bwenv.git
-   cd bwenv
-   ```
-
-2. Build the project:
-   ```bash
-   cargo build --release
-   ```
-
-3. Install the binary to your PATH:
-   ```bash
-   # On macOS/Linux
-   cp target/release/bwenv /usr/local/bin/
-   
-   # On Windows (using PowerShell as Administrator)
-   Copy-Item .\target\release\bwenv.exe -Destination "$env:USERPROFILE\.cargo\bin\"
-   ```
-
-### Using Cargo
-
+```bash
+git clone https://github.com/yourusername/bwenv.git
+cd bwenv
+cargo build --release
+sudo cp target/release/bwenv /usr/local/bin/
 ```
-cargo install --git https://github.com/yourusername/bwenv.git
+
+### Binary Releases
+
+Download from [GitHub Releases](https://github.com/yourusername/bwenv/releases)
+
+## Quick Start (5 minutes)
+
+### 1. Get Bitwarden Access Token
+
+```bash
+# Go to: https://vault.bitwarden.com
+# Settings → Security → Access Tokens → New Access Token
+# Name: "bwenv-dev"
+# Permissions: ✓ Secrets Manager
+# Copy the token (shown only once!)
 ```
+
+### 2. Export Token
+
+```bash
+export BITWARDEN_ACCESS_TOKEN="0.48b4774c-xxxx-xxxx-xxxx.your_token_data_here"
+
+# Add to shell profile for persistence
+echo 'export BITWARDEN_ACCESS_TOKEN="your_token"' >> ~/.bashrc  # or ~/.zshrc
+```
+
+### 3. Create Project in Bitwarden
+
+1. Go to [Bitwarden Secrets Manager](https://vault.bitwarden.com)
+2. Click **"New Project"**
+3. Name it (e.g., "MyApp")
+4. Save
+
+### 4. Push Your Secrets
+
+```bash
+# Upload your .env to Bitwarden
+bwenv push --project MyApp
+
+# Output:
+# ✓ Successfully pushed 12 secrets to project 'MyApp'
+```
+
+### 5. Team Onboarding (One Command!)
+
+```bash
+# New teammate pulls secrets
+bwenv pull --project MyApp
+
+# Done! They have the .env file with all secrets
+```
+
+## Commands
+
+### `pull` - Download Secrets
+
+Pull secrets from Bitwarden to local `.env` file:
+
+```bash
+# Basic usage
+bwenv pull --project MyApp
+
+# Custom output file
+bwenv pull --project MyApp --output .env.production
+
+# Overwrite existing file (skip confirmation)
+bwenv pull --project MyApp --force
+```
+
+**Options:**
+- `-p, --project <PROJECT>` - Project name or ID (required)
+- `-o, --output <OUTPUT>` - Output file path (default: `.env`)
+- `--force` - Overwrite existing file without prompting
+
+---
+
+### `push` - Upload Secrets
+
+Push local `.env` file to Bitwarden:
+
+```bash
+# Basic usage
+bwenv push --project MyApp
+
+# Custom input file
+bwenv push --project MyApp --input .env.staging
+
+# Overwrite existing secrets in Bitwarden
+bwenv push --project MyApp --overwrite
+```
+
+**Options:**
+- `-p, --project <PROJECT>` - Project name or ID (required)
+- `-i, --input <INPUT>` - Input .env file (default: `.env`)
+- `--overwrite` - Overwrite existing secrets (default: creates new)
+
+---
+
+### `status` - Check Drift
+
+See exactly what's different between local and remote:
+
+```bash
+# Check sync status
+bwenv status --project MyApp
+
+# Example output:
+# 🔍 Checking sync status...
+# 📦 Project: MyApp (a1b2c3d4-...)
+#
+# ⚠️  Out of sync detected:
+#
+# 📥 Only in Bitwarden (2):
+#    - NEW_API_KEY
+#    - FEATURE_FLAG_X
+#    → Run 'bwenv pull' to download these
+#
+# 📤 Only in local .env (1):
+#    - LOCAL_DEBUG_MODE
+#    → Run 'bwenv push' to upload these
+#
+# 🔄 Different values (1):
+#    - DATABASE_URL
+#    → Run 'bwenv pull --force' to overwrite local
+#    → Run 'bwenv push --overwrite' to overwrite remote
+```
+
+**Options:**
+- `-p, --project <PROJECT>` - Project name or ID (required)
+- `-e, --env-file <FILE>` - Custom .env file to compare (default: `.env`)
+
+---
+
+### `list` - Show Projects
+
+List all projects and secrets:
+
+```bash
+# List all projects
+bwenv list
+
+# Output:
+# Projects:
+#   MyApp (a1b2c3d4-5678-...)
+#   StagingEnv (b2c3d4e5-6789-...)
+#
+# Use 'bwenv list --project <name>' to see secrets
+
+# List secrets in a specific project
+bwenv list --project MyApp
+
+# Output:
+# Project: MyApp (a1b2c3d4-...)
+#
+# Secrets:
+#   DATABASE_URL = <hidden>
+#   API_KEY = <hidden>
+#   REDIS_URL = <hidden>
+```
+
+**Options:**
+- `-p, --project <PROJECT>` - Show secrets in specific project (optional)
+
+---
+
+### `init` - Initialize Config
+
+Create `.bwenv.toml` configuration file:
+
+```bash
+bwenv init
+
+# Output:
+# ✓ Created .bwenv.toml configuration file
+#
+# Next steps:
+#   1. Edit .bwenv.toml and set your default project
+#   2. Run 'bwenv push' to upload your .env to Bitwarden
+#   3. Add .bwenv.toml to git (safe to commit)
+#   4. Add .env to .gitignore (contains secrets)
+```
+
+**Generated `.bwenv.toml`:**
+```toml
+# bwenv Configuration
+default_project = "MyProject"
+env_file = ".env"
+auto_sync = false
+show_secrets = false
+```
+
+---
+
+### `validate` - Check .env Format
+
+Validate `.env` file syntax:
+
+```bash
+# Validate default .env
+bwenv validate
+
+# Output:
+# ✓ .env is valid
+
+# Validate specific file
+bwenv validate --input .env.production
+
+# Invalid file output:
+# ✗ Validation failed: Line 5: Missing '=' separator
+```
+
+**Options:**
+- `-i, --input <INPUT>` - File to validate (default: `.env`)
+
+---
 
 ## Authentication
 
-This tool uses your existing Bitwarden desktop application session. Before using it:
+bwenv uses **Bitwarden Secrets Manager access tokens**:
 
-1. Ensure Bitwarden desktop app is installed and running
-2. Make sure you're logged into your Bitwarden account
-3. The app should be unlocked (you've entered your master password)
+### Generate Token
 
-The tool will automatically detect and use your existing session for authentication.
+1. Go to [Bitwarden Settings](https://vault.bitwarden.com/#/settings/security/security-keys)
+2. Click **"New Access Token"**
+3. Name: `bwenv` (or any name)
+4. Permissions: ✓ **Secrets Manager**
+5. Copy token (shown once)
 
-## Usage Examples
-
-### Verbosity Control
-
-Control the verbosity of command output:
+### Export Token
 
 ```bash
-# Normal output (warnings and errors)
-bwenv store --file .env
+# Temporary (current shell session)
+export BITWARDEN_ACCESS_TOKEN="your_token_here"
 
-# Verbose output (info, warnings, and errors)
-bwenv -v store --file .env
+# Permanent (add to shell profile)
+echo 'export BITWARDEN_ACCESS_TOKEN="your_token"' >> ~/.bashrc
 
-# Debug output (debug info, info, warnings, and errors)
-bwenv -vv store --file .env
-
-# Trace output (maximum verbosity)
-bwenv -vvv store --file .env
-
-# Quiet mode (only errors)
-bwenv -q store --file .env
+# Or for zsh
+echo 'export BITWARDEN_ACCESS_TOKEN="your_token"' >> ~/.zshrc
 ```
 
-### Storing Secrets
+### Security Notes
 
-Store environment variables from a `.env` file to Bitwarden:
+- ✅ Access tokens are scoped to Secrets Manager only
+- ✅ Tokens can be revoked anytime in Bitwarden settings
+- ✅ Zero-knowledge encryption (Bitwarden can't see secrets)
+- ⚠️ Never commit tokens to git (add `.env.test` to `.gitignore`)
 
-```bash
-# Basic usage
-bwenv store --file .env
+---
 
-# Store in a specific folder
-bwenv store --file .env --folder "Development/MyProject"
+## Why bwenv vs Competitors?
 
-# Store with a custom name
-bwenv store --file .env --name "MyProject-Development"
+| Feature | Infisical | Doppler | Vault | **bwenv** |
+|---------|-----------|---------|-------|-----------|
+| **Setup Time** | 30+ min | 15 min | 4 hours | **5 min** ⚡ |
+| **Complexity** | High | Medium | Very High | **Very Low** |
+| **Free Tier** | Limited | 5 users | ❌ | **Full features** 🆓 |
+| **Drift Detection** | ❌ | ✅ | ❌ | **✅** 🔍 |
+| **Self-Hosting** | ✅ | ❌ | ✅ | **✅ (via BW)** |
+| **Commands to Learn** | 20+ | 15+ | 30+ | **6** 🎯 |
+| **Local Development** | Requires server | Cloud-only | Complex | **Works offline** |
+| **SDK Language** | Node/Python | Node | Go | **Rust** 🦀 |
 
-# Overwrite existing secrets
-bwenv store --file .env --folder "Development/MyProject" --overwrite
-```
+### Target Audience
 
-### Retrieving Secrets
+**Perfect for:**
+- 👨‍💻 Individual developers
+- 👥 Small teams (2-10 people)
+- 🚀 Startups & indie hackers
+- 🎓 Side projects & learning
 
-Retrieve secrets from Bitwarden and generate a `.env` file:
+**Not ideal for:**
+- 🏢 Large enterprises (50+ devs) → Use Vault or Infisical
+- ☁️ AWS-only shops → Use AWS Secrets Manager
+- 🔐 Teams needing dynamic secrets → Use Vault
 
-```bash
-# Basic usage
-bwenv retrieve --name "MyProject-Development"
+See [COMPETITIVE_ANALYSIS.md](COMPETITIVE_ANALYSIS.md) for detailed comparison.
 
-# Retrieve to a specific file
-bwenv retrieve --name "MyProject-Development" --output .env.production
-
-# Retrieve from a specific folder
-bwenv retrieve --folder "Development/MyProject" --output .env
-
-# Merge with existing .env file
-bwenv retrieve --folder "Development/MyProject" --merge
-```
-
-### Listing Environment Sets
-
-List all stored environment sets:
-
-```bash
-# Text format (default)
-bwenv list
-
-# JSON format
-bwenv list --format json
-```
-
-## Command Reference
-
-### Global Options
-
-```
-bwenv [OPTIONS] <SUBCOMMAND>
-```
-
-Options:
-- `-v, --verbose`: Increase logging verbosity (can be used multiple times)
-- `-q, --quiet`: Suppress all output except errors
-- `-h, --help`: Print help information
-- `-V, --version`: Print version information
-
-### `store`
-
-```
-bwenv store [OPTIONS] --file <FILE>
-```
-
-Options:
-- `--file <FILE>`: Path to the .env file to store (required)
-- `--folder <FOLDER>`: Bitwarden folder path to store secrets in
-- `--name <n>`: Name for this environment set (defaults to folder name)
-- `--overwrite`: Overwrite existing secrets with the same name
-
-### `retrieve`
-
-```
-bwenv retrieve [OPTIONS]
-```
-
-Options:
-- `--folder <FOLDER>`: Bitwarden folder path to retrieve secrets from
-- `--name <n>`: Name of the environment set to retrieve
-- `--output <FILE>`: Output file path (defaults to .env)
-- `--merge`: Merge with existing .env file instead of overwriting
-
-### `list`
-
-```
-bwenv list [OPTIONS]
-```
-
-Options:
-- `--format <FORMAT>`: Output format (text, json)
-
-## Logging
-
-This tool uses a comprehensive logging system that follows GNU/Linux conventions:
-
-### Verbosity Levels
-
-- **Quiet** (`-q`): Only errors are logged
-- **Normal** (default): Warnings and errors
-- **Verbose** (`-v`): Info, warnings, and errors
-- **Debug** (`-vv`): Debug info, info, warnings, and errors
-- **Trace** (`-vvv`): Maximum verbosity with all log messages
-
-### Log Files
-
-Log files are stored in the following locations:
-
-- **Linux**: `~/.local/share/bwenv/logs/`
-- **macOS**: `~/.local/share/bwenv/logs/`
-- **Windows**: `%USERPROFILE%\.bwenv\logs\`
-
-Logs are rotated automatically, with the 10 most recent log files being retained. Each log file is named with the date (`bwenv-YYYY-MM-DD.log`).
-
-## Security Considerations
-
-- This tool requires an active Bitwarden session from your desktop app
-- It does not store your master password
-- All secrets are encrypted using Bitwarden's security model
-- The tool never transmits your secrets to any third-party services
-- Consider who has access to your Bitwarden vault when sharing environment variables
-
-## Troubleshooting
-
-### Common Issues
-
-1. **"Session not found" error**
-   - Ensure Bitwarden desktop app is running and unlocked
-   - Try locking and unlocking your vault in the desktop app
-
-2. **Permission issues on macOS**
-   3. You may need to grant additional permissions:
-        ```
-        chmod +x /usr/local/bin/bwenv
-        ```
-
-3. **Bitwarden CLI not found**
-   - Make sure the Bitwarden CLI is installed and in your PATH
-   - Run `bw --version` to confirm it's installed correctly
-
-4. **Items not showing up in list**
-   - Check that your items are stored as secure notes
-   - Verify the format of your stored notes
-
-5. **Log file access issues**
-   - Ensure you have write permissions to the log directory
-   - For permission errors, try running the command with sudo
+---
 
 ## Testing
 
-This project includes a comprehensive test suite with multiple testing strategies:
+bwenv has **comprehensive test coverage** across multiple layers:
 
 ### Test Categories
 
-- **Unit Tests**: Test individual functions and modules in isolation
-- **Integration Tests**: Test CLI commands and end-to-end functionality  
-- **Property-Based Tests**: Test with randomly generated inputs using `proptest`
-- **Mock Tests**: Test Bitwarden integration logic without requiring actual CLI
+- ✅ **Unit Tests** (72 tests) - Core functionality (parser, provider, errors)
+- ✅ **Integration Tests** (29 tests) - CLI command parsing
+- ✅ **E2E Tests** (20 scenarios) - Real Bitwarden integration
+- ✅ **Property Tests** (5 tests) - Edge case discovery with random inputs
+- ✅ **Security Tests** (13 tests) - Secrets leakage prevention
+- ✅ **Benchmarks** (11 tests) - Performance tracking
 
-### Running Tests
+### Quick Test Run
 
 ```bash
-# Run all tests
+# Unit tests (fast, < 1 second)
+cargo test --lib
+
+# All tests
 cargo test
 
-# Run comprehensive test suite with linting and formatting
-./test.sh
-
-# Run specific test categories
-cargo test --lib                    # Unit tests only
-cargo test --test integration_tests # Integration tests
-cargo test --test file_operations_tests # File operation tests
-cargo test --test property_tests    # Property-based tests
-cargo test --test bitwarden_mock_tests # Mock tests
-
-# Run with verbose output
-cargo test -- --nocapture
+# E2E tests (requires Bitwarden token)
+./scripts/run-e2e-tests.sh
 ```
 
-### Test Coverage
+### E2E Testing
 
-Generate coverage reports using `cargo-tarpaulin`:
+**End-to-end tests** verify bwenv works correctly with **real Bitwarden Secrets Manager**:
 
 ```bash
-# Install tarpaulin
-cargo install cargo-tarpaulin
+# Setup (one-time, 5 minutes)
+cp .env.test.example .env.test
+# Edit .env.test with your Bitwarden access token
 
-# Generate coverage report
-cargo tarpaulin --out Html --output-dir coverage
+# Run E2E tests
+./scripts/run-e2e-tests.sh
 
-# View report
-open coverage/tarpaulin-report.html
+# Output:
+# === bwenv E2E Test Runner ===
+# Mode: docker
+# Project: E2E-Test
+#
+# running 20 tests
+# test test_push_basic_secrets ... ok
+# test test_pull_basic_secrets ... ok
+# test test_roundtrip_push_pull_integrity ... ok
+# ...
+# ✓ All E2E tests passed!
 ```
 
-### Benchmarks
+**E2E Test Coverage:**
+- Push command (5 scenarios)
+- Pull command (4 scenarios)
+- Roundtrip integrity (2 tests)
+- List command (2 scenarios)
+- Validate command (3 scenarios)
+- Error handling (4 scenarios)
 
-Run performance benchmarks:
+### Documentation
 
+- [TESTING.md](TESTING.md) - Comprehensive testing guide (500+ lines)
+- [E2E_QUICKSTART.md](E2E_QUICKSTART.md) - E2E test setup (5-minute guide)
+- `tests/e2e/README.md` - Developer guide for writing E2E tests
+
+---
+
+## Troubleshooting
+
+### "BITWARDEN_ACCESS_TOKEN not set"
+
+**Cause:** Environment variable not exported
+
+**Fix:**
 ```bash
-cargo bench
+# Check if token is set
+echo $BITWARDEN_ACCESS_TOKEN
+
+# Export token
+export BITWARDEN_ACCESS_TOKEN="your_token_here"
+
+# Or add to shell profile for persistence
+echo 'export BITWARDEN_ACCESS_TOKEN="your_token"' >> ~/.bashrc
+source ~/.bashrc
 ```
 
-For detailed testing documentation, see [TESTING.md](TESTING.md).
+---
+
+### "Project not found"
+
+**Cause:** Project doesn't exist or name is incorrect
+
+**Fix:**
+```bash
+# List all projects to see correct name
+bwenv list
+
+# Projects are case-sensitive
+bwenv pull --project MyApp  # ✓ Correct
+bwenv pull --project myapp  # ✗ Wrong case
+```
+
+---
+
+### "Authentication failed"
+
+**Cause:** Invalid or expired access token
+
+**Fix:**
+1. Generate new access token in Bitwarden
+2. Go to Settings → Security → Access Tokens
+3. Click "New Access Token"
+4. Ensure "Secrets Manager" permission is checked
+5. Export new token: `export BITWARDEN_ACCESS_TOKEN="new_token"`
+
+---
+
+### Drift detection shows differences incorrectly
+
+**Cause:** .env file might not exist or be in wrong location
+
+**Fix:**
+```bash
+# Check .env file exists
+ls -la .env
+
+# Specify custom env file location
+bwenv status --project MyApp --env-file /path/to/.env
+
+# Pull to create .env if missing
+bwenv pull --project MyApp
+```
+
+---
+
+### "Failed to read .env file"
+
+**Cause:** Malformed .env file or permission issues
+
+**Fix:**
+```bash
+# Validate .env format
+bwenv validate
+
+# Check file permissions
+ls -l .env
+
+# Fix permissions if needed
+chmod 600 .env
+```
+
+---
+
+For more troubleshooting, see:
+- [TESTING.md](TESTING.md) - Troubleshooting section
+- [E2E_QUICKSTART.md](E2E_QUICKSTART.md) - E2E test troubleshooting
+- [GitHub Issues](https://github.com/yourusername/bwenv/issues)
+
+---
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+We welcome contributions! 🎉
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Write tests for your changes (see [TESTING.md](TESTING.md))
-4. Run the test suite (`./test.sh`)
-5. Commit your changes (`git commit -m 'Add some amazing feature'`)
-6. Push to the branch (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
+### Development Setup
 
-### Development Guidelines
+```bash
+# Clone repository
+git clone https://github.com/yourusername/bwenv.git
+cd bwenv
 
-- Write tests for all new functionality
-- Ensure all tests pass before submitting PR
-- Follow existing code style and patterns
-- Update documentation as needed
-- Add appropriate error handling and logging
-</edits>
+# Build
+cargo build
+
+# Run tests
+cargo test
+
+# Run E2E tests (requires Bitwarden token)
+./scripts/run-e2e-tests.sh --local
+```
+
+### Guidelines
+
+1. **Write tests first** (TDD approach)
+2. **Run full test suite** before submitting PR
+   ```bash
+   cargo test                    # Unit + integration tests
+   cargo clippy                  # Linting
+   cargo fmt                     # Formatting
+   ./scripts/run-e2e-tests.sh    # E2E tests
+   ```
+3. **Add E2E tests** for new commands (see [E2E_QUICKSTART.md](E2E_QUICKSTART.md))
+4. **Update documentation** (README, TESTING.md, command help text)
+5. **Follow Rust conventions** (rustfmt, clippy clean)
+
+### Pull Request Process
+
+1. **Fork** the repository
+2. **Create** feature branch
+   ```bash
+   git checkout -b feature/amazing-feature
+   ```
+3. **Write tests** for your changes
+   ```bash
+   cargo test
+   ```
+4. **Run E2E tests** (if adding commands)
+   ```bash
+   ./scripts/run-e2e-tests.sh
+   ```
+5. **Commit** changes
+   ```bash
+   git commit -m 'Add amazing feature'
+   ```
+6. **Push** to branch
+   ```bash
+   git push origin feature/amazing-feature
+   ```
+7. **Open** Pull Request
+
+### What to Contribute
+
+**Good First Issues:**
+- 📝 Improve documentation
+- 🐛 Fix bugs
+- ✅ Add more tests
+- 📊 Add examples
+
+**Medium Issues:**
+- 🚀 Performance improvements
+- 🔧 New command options
+- 📦 Package managers (Homebrew, apt)
+
+**Advanced Issues:**
+- 🎯 New commands
+- 🔌 CI/CD integrations
+- 🏗️ Architectural improvements
+
+See [TESTING.md](TESTING.md) for comprehensive testing documentation.
+
+---
+
+## Roadmap
+
+### Phase 1: Foundation ✅ (Complete)
+- ✅ Core CLI commands (pull, push, list, status, validate, init)
+- ✅ Real Bitwarden SDK integration
+- ✅ Drift detection
+- ✅ E2E testing infrastructure (20 tests)
+- ✅ Comprehensive documentation
+
+### Phase 2: Developer Experience (Next 3 months)
+- [ ] Git hooks integration (auto-sync on pull)
+- [ ] CI/CD examples (GitHub Actions, GitLab CI)
+- [ ] Config file support (.bwenv.toml reading)
+- [ ] Better error messages (actionable suggestions)
+- [ ] Homebrew formula (easy macOS install)
+
+### Phase 3: Team Features (6 months)
+- [ ] Team templates (shared .env.example generation)
+- [ ] Secret rotation helpers (detect stale secrets)
+- [ ] Import/export (migrate from Doppler/Infisical)
+- [ ] Desktop notifications (drift alerts)
+
+### Phase 4: Enterprise-Lite (12 months)
+- [ ] Policy enforcement (required keys validation)
+- [ ] Change approvals (via Bitwarden workflows)
+- [ ] Cost tracking (secret usage analytics)
+- [ ] SSO integration (via Bitwarden Enterprise)
+
+---
+
+## Security Considerations
+
+- 🔒 **Zero-knowledge encryption** - Bitwarden uses end-to-end encryption
+- 🔑 **Access tokens** are scoped to Secrets Manager only
+- 🚫 **No master password storage** - bwenv never sees your master password
+- ✅ **Secrets never leave Bitwarden** except when explicitly pulled
+- 🔍 **Open source** - Audit the code yourself
+- 🛡️ **Battle-tested SDK** - Uses official Bitwarden Rust SDK
+
+### Best Practices
+
+1. **Never commit `.env` files** - Add to `.gitignore`
+2. **Rotate tokens regularly** - Generate new access tokens monthly
+3. **Use separate projects** - Different projects for dev/staging/prod
+4. **Limit token permissions** - Only grant Secrets Manager access
+5. **Review team access** - Check who has access to projects in Bitwarden
+
+---
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## Acknowledgments
+
+- **Bitwarden** - For the excellent Secrets Manager SDK
+- **Rust Community** - For amazing libraries and tooling
+- **Contributors** - Thank you for improving bwenv! 🎉
+
+---
+
+## Support
+
+- 📖 **Documentation**: [TESTING.md](TESTING.md), [E2E_QUICKSTART.md](E2E_QUICKSTART.md)
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/yourusername/bwenv/issues)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/yourusername/bwenv/discussions)
+- 📧 **Email**: your.email@example.com
+
+---
+
+**Built with ❤️ by developers, for developers.**

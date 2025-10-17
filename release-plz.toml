@@ -1,0 +1,15 @@
+[workspace]
+# Let cargo-dist handle GitHub releases
+git_release_enable = false
+
+# Update CHANGELOG.md on version bumps
+changelog_update = true
+
+# Publish to crates.io
+publish = true
+
+# Don't create draft PRs
+pr_draft = false
+
+# PR title template
+pr_name = "chore: release {{ package }} v{{ version }}"

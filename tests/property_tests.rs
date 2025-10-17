@@ -1,8 +1,8 @@
+use bwenv::env::parser::{read_env_file, validate_env_file, write_env_file};
 use proptest::prelude::*;
 use std::collections::HashMap;
 use std::fs;
 use tempfile::tempdir;
-use bwenv::env_file::{read_env_file, write_env_file, validate_env_file};
 
 // Strategy for generating valid environment variable keys
 fn env_key_strategy() -> impl Strategy<Value = String> {
@@ -29,13 +29,13 @@ proptest! {
     fn test_roundtrip_property(env_vars in env_vars_strategy()) {
         let temp_dir = tempdir().unwrap();
         let file_path = temp_dir.path().join("test.env");
-        
+
         // Write environment variables to file
         write_env_file(&file_path, &env_vars, false).unwrap();
-        
+
         // Read them back
         let read_vars = read_env_file(&file_path).unwrap();
-        
+
         // Should be identical (accounting for whitespace trimming)
         prop_assert_eq!(env_vars.len(), read_vars.len());
         for (key, value) in &env_vars {
@@ -51,22 +51,22 @@ proptest! {
     ) {
         let temp_dir = tempdir().unwrap();
         let file_path = temp_dir.path().join("test.env");
-        
+
         // Write initial variables
         write_env_file(&file_path, &initial_vars, false).unwrap();
-        
+
         // Merge with new variables
         write_env_file(&file_path, &new_vars, true).unwrap();
-        
+
         // Read merged result
         let merged_vars = read_env_file(&file_path).unwrap();
-        
+
         // Check that all new variables are present
         for (key, value) in &new_vars {
             let expected_value = value.trim().to_string();
             prop_assert_eq!(merged_vars.get(key), Some(&expected_value));
         }
-        
+
         // Check that initial variables are present (unless overwritten)
         for (key, value) in &initial_vars {
             if !new_vars.contains_key(key) {
@@ -74,9 +74,9 @@ proptest! {
                 prop_assert_eq!(merged_vars.get(key), Some(&expected_value));
             }
         }
-        
+
         // Total size should be correct
-        let expected_size = initial_vars.len() + new_vars.len() - 
+        let expected_size = initial_vars.len() + new_vars.len() -
             initial_vars.keys().filter(|k| new_vars.contains_key(*k)).count();
         prop_assert_eq!(merged_vars.len(), expected_size);
     }
@@ -88,23 +88,23 @@ proptest! {
     ) {
         let temp_dir = tempdir().unwrap();
         let file_path = temp_dir.path().join("test.env");
-        
+
         // Write initial variables
         write_env_file(&file_path, &initial_vars, false).unwrap();
-        
+
         // Overwrite with new variables (merge = false)
         write_env_file(&file_path, &new_vars, false).unwrap();
-        
+
         // Read result
         let result_vars = read_env_file(&file_path).unwrap();
-        
+
         // Should only contain new variables (accounting for whitespace trimming)
         prop_assert_eq!(result_vars.len(), new_vars.len());
         for (key, value) in &new_vars {
             let expected_value = value.trim().to_string();
             prop_assert_eq!(result_vars.get(key), Some(&expected_value));
         }
-        
+
         // Should not contain any initial variables (unless they're also in new_vars)
         for key in initial_vars.keys() {
             if !new_vars.contains_key(key) {
@@ -120,12 +120,12 @@ proptest! {
     ) {
         let temp_dir = tempdir().unwrap();
         let file_path = temp_dir.path().join("test.env");
-        
+
         let content = format!("{}={}", key, value);
         fs::write(&file_path, &content).unwrap();
-        
+
         let vars = read_env_file(&file_path).unwrap();
-        
+
         prop_assert_eq!(vars.len(), 1);
         let expected_value = value.trim().to_string();
         prop_assert_eq!(vars.get(&key), Some(&expected_value));
@@ -138,13 +138,13 @@ proptest! {
     ) {
         let temp_dir = tempdir().unwrap();
         let file_path = temp_dir.path().join("test.env");
-        
+
         let value = value_parts.join("=");
         let content = format!("{}={}", key, value);
         fs::write(&file_path, &content).unwrap();
-        
+
         let vars = read_env_file(&file_path).unwrap();
-        
+
         prop_assert_eq!(vars.len(), 1);
         let expected_value = value.trim().to_string();
         prop_assert_eq!(vars.get(&key), Some(&expected_value));
@@ -154,12 +154,12 @@ proptest! {
     fn test_empty_value_property(key in env_key_strategy()) {
         let temp_dir = tempdir().unwrap();
         let file_path = temp_dir.path().join("test.env");
-        
+
         let content = format!("{}=", key);
         fs::write(&file_path, &content).unwrap();
-        
+
         let vars = read_env_file(&file_path).unwrap();
-        
+
         prop_assert_eq!(vars.len(), 1);
         let empty_string = String::new();
         prop_assert_eq!(vars.get(&key), Some(&empty_string));
@@ -174,7 +174,7 @@ proptest! {
     ) {
         let temp_dir = tempdir().unwrap();
         let file_path = temp_dir.path().join("test.env");
-        
+
         let content = format!("{}{}={}{}",
             " ".repeat(leading_spaces),
             key,
@@ -182,9 +182,9 @@ proptest! {
             " ".repeat(trailing_spaces)
         );
         fs::write(&file_path, &content).unwrap();
-        
+
         let vars = read_env_file(&file_path).unwrap();
-        
+
         prop_assert_eq!(vars.len(), 1);
         let expected_value = value.trim().to_string();
         prop_assert_eq!(vars.get(&key), Some(&expected_value));
@@ -196,9 +196,9 @@ proptest! {
     ) {
         let temp_dir = tempdir().unwrap();
         let file_path = temp_dir.path().join("test.env");
-        
+
         write_env_file(&file_path, &env_vars, false).unwrap();
-        
+
         // Files written by our function should always validate
         prop_assert!(validate_env_file(&file_path).is_ok());
     }
@@ -208,19 +208,19 @@ proptest! {
         let temp_dir = tempdir().unwrap();
         let file_path1 = temp_dir.path().join("test1.env");
         let file_path2 = temp_dir.path().join("test2.env");
-        
+
         // Write the same variables to two different files
         write_env_file(&file_path1, &env_vars, false).unwrap();
         write_env_file(&file_path2, &env_vars, false).unwrap();
-        
+
         // Files should be identical except for timestamps
         let content1 = fs::read_to_string(&file_path1).unwrap();
         let content2 = fs::read_to_string(&file_path2).unwrap();
-        
+
         // Remove timestamp lines for comparison
         let lines1: Vec<&str> = content1.lines().filter(|line| !line.contains("Generated by") && !line.starts_with("# 20")).collect();
         let lines2: Vec<&str> = content2.lines().filter(|line| !line.contains("Generated by") && !line.starts_with("# 20")).collect();
-        
+
         prop_assert_eq!(lines1, lines2);
     }
 
@@ -231,14 +231,14 @@ proptest! {
     ) {
         let temp_dir = tempdir().unwrap();
         let file_path = temp_dir.path().join("test.env");
-        
+
         // Create content with comments interspersed
         let mut content = String::new();
         for comment in &comment_lines {
             content.push_str(comment);
             content.push('\n');
         }
-        
+
         for (key, value) in &env_vars {
             content.push_str(&format!("{}={}\n", key, value));
             if !comment_lines.is_empty() {
@@ -246,11 +246,11 @@ proptest! {
                 content.push('\n');
             }
         }
-        
+
         fs::write(&file_path, &content).unwrap();
-        
+
         let read_vars = read_env_file(&file_path).unwrap();
-        
+
         // Should read the same variables regardless of comments (accounting for trimming)
         prop_assert_eq!(read_vars.len(), env_vars.len());
         for (key, value) in &env_vars {
@@ -268,15 +268,15 @@ proptest! {
     ) {
         let temp_dir = tempdir().unwrap();
         let file_path = temp_dir.path().join("large_test.env");
-        
+
         write_env_file(&file_path, &env_vars, false).unwrap();
-        
+
         // File should exist and be readable
         prop_assert!(file_path.exists());
-        
+
         let read_vars = read_env_file(&file_path).unwrap();
         prop_assert_eq!(read_vars.len(), env_vars.len());
-        
+
         // Validate that large files still pass validation
         prop_assert!(validate_env_file(&file_path).is_ok());
     }
@@ -288,12 +288,12 @@ proptest! {
     ) {
         let temp_dir = tempdir().unwrap();
         let file_path = temp_dir.path().join("test.env");
-        
+
         let content = format!("{}={}", key, special_chars);
         fs::write(&file_path, &content).unwrap();
-        
+
         let vars = read_env_file(&file_path).unwrap();
-        
+
         prop_assert_eq!(vars.len(), 1);
         let expected_value = special_chars.trim().to_string();
         prop_assert_eq!(vars.get(&key), Some(&expected_value));
@@ -306,12 +306,12 @@ proptest! {
     ) {
         let temp_dir = tempdir().unwrap();
         let file_path = temp_dir.path().join("test.env");
-        
+
         let content = format!("{}={}", key, unicode_value);
         fs::write(&file_path, &content).unwrap();
-        
+
         let vars = read_env_file(&file_path).unwrap();
-        
+
         prop_assert_eq!(vars.len(), 1);
         let expected_value = unicode_value.trim().to_string();
         prop_assert_eq!(vars.get(&key), Some(&expected_value));
