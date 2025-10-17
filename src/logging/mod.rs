@@ -1,7 +1,7 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use chrono::Local;
 use fern::{Dispatch, InitError};
-use log::{debug, error, info, trace, warn, LevelFilter};
+use log::{debug, trace, LevelFilter};
 use std::env;
 use std::fs;
 use std::io;
@@ -43,7 +43,9 @@ impl Verbosity {
 
 /// Returns the path to the log directory
 pub fn get_log_directory() -> PathBuf {
-    let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
+    let home_dir = directories::BaseDirs::new()
+        .map(|base_dirs| base_dirs.home_dir().to_path_buf())
+        .unwrap_or_else(|| PathBuf::from("."));
 
     // Create standard XDG-compliant log directory
     let log_dir = if cfg!(target_os = "linux") || cfg!(target_os = "macos") {
@@ -125,6 +127,48 @@ pub fn initialize(verbosity: Verbosity, quiet: bool) -> Result<(), InitError> {
     Ok(())
 }
 
+fn rotate_logs(log_dir: &Path) -> Result<(), io::Error> {
+    // Try to read the log directory
+    let entries = match fs::read_dir(log_dir) {
+        Ok(entries) => entries,
+        Err(e) => {
+            if e.kind() == io::ErrorKind::NotFound {
+                // Directory doesn't exist yet, create it
+                fs::create_dir_all(log_dir)?;
+                return Ok(());
+            }
+            return Err(e);
+        }
+    };
+
+    let mut log_files: Vec<(PathBuf, SystemTime)> = Vec::new();
+
+    // Collect log files with their modification times
+    for entry in entries {
+        let entry = entry?;
+        let path = entry.path();
+
+        if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("log") {
+            if let Ok(metadata) = fs::metadata(&path) {
+                if let Ok(modified) = metadata.modified() {
+                    log_files.push((path, modified));
+                }
+            }
+        }
+    }
+
+    // Sort by modification time (oldest first)
+    log_files.sort_by(|a, b| a.1.cmp(&b.1));
+
+    // Keep only the 10 most recent logs
+    let files_to_delete = log_files.len().saturating_sub(10);
+    for (path, _) in log_files.iter().take(files_to_delete) {
+        let _ = fs::remove_file(path);
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -154,7 +198,7 @@ mod tests {
     fn test_verbosity_debug_clone_copy() {
         let v1 = Verbosity::Verbose;
         let v2 = v1; // Copy
-        let v3 = v1.clone(); // Clone
+        let v3 = v1; // Copy
 
         assert_eq!(v1, v2);
         assert_eq!(v1, v3);
@@ -328,47 +372,4 @@ mod tests {
 
     // Note: Testing initialize() function would require more complex setup
     // due to global logger state, but we test its components above
-}
-
-/// Rotate logs - keep only the latest 10 log files
-fn rotate_logs(log_dir: &Path) -> Result<(), io::Error> {
-    // Get all log files
-    let entries = match fs::read_dir(log_dir) {
-        Ok(entries) => entries,
-        Err(e) => {
-            if e.kind() == io::ErrorKind::NotFound {
-                // Directory doesn't exist, try to create it
-                fs::create_dir_all(log_dir)?;
-                return Ok(());
-            }
-            return Err(e);
-        }
-    };
-
-    let mut log_files: Vec<(PathBuf, SystemTime)> = Vec::new();
-
-    // Collect log files with their modification times
-    for entry in entries {
-        let entry = entry?;
-        let path = entry.path();
-
-        if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("log") {
-            if let Ok(metadata) = fs::metadata(&path) {
-                if let Ok(modified) = metadata.modified() {
-                    log_files.push((path, modified));
-                }
-            }
-        }
-    }
-
-    // Sort by modification time (oldest first)
-    log_files.sort_by(|a, b| a.1.cmp(&b.1));
-
-    // Keep only the 10 most recent logs
-    let files_to_delete = log_files.len().saturating_sub(10);
-    for i in 0..files_to_delete {
-        let _ = fs::remove_file(&log_files[i].0);
-    }
-
-    Ok(())
 }

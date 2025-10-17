@@ -2,9 +2,15 @@
 name = "bwenv"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.85.0"
 authors = ["Your Name <your.email@example.com>"]
-description = "A CLI tool for managing .env secrets with Bitwarden"
-license = "MIT"
+license = "MIT OR Apache-2.0"
+description = "A developer-friendly CLI for managing .env files using Bitwarden Secrets Manager"
+homepage = "https://github.com/yourusername/bwenv"
+repository = "https://github.com/yourusername/bwenv"
+readme = "README.md"
+keywords = ["bitwarden", "secrets", "cli", "env", "dotenv"]
+categories = ["command-line-utilities", "development-tools"]
 
 [lib]
 name = "bwenv"
@@ -62,3 +68,32 @@ lto = true
 codegen-units = 1
 panic = "abort"
 strip = true
+
+# The profile that 'cargo dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
+
+# Config for 'cargo dist'
+[workspace.metadata.dist]
+# The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
+cargo-dist-version = "0.22.1"
+# CI backends to support
+ci = "github"
+# The installers to generate for each app
+installers = ["shell", "powershell", "homebrew"]
+# Target platforms to build apps for (Rust target-triple syntax)
+targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
+# Path that installers should place binaries in
+install-path = "CARGO_HOME"
+# Whether to install an updater program
+install-updater = false
+# Publish jobs to run in CI
+pr-run-mode = "plan"
+# Whether to enable GitHub Attestations
+github-attestations = true
+
+# Config for 'cargo dist' homebrew integration
+[workspace.metadata.dist.homebrew]
+# Optionally specify a custom Homebrew tap to use
+# tap = "yourusername/homebrew-bwenv"

@@ -8,6 +8,12 @@ pub struct SyncEngine {
     // TODO: Implement sync logic
 }
 
+impl Default for SyncEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SyncEngine {
     pub fn new() -> Self {
         todo!("Sync engine initialization pending")

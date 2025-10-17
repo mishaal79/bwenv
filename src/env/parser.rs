@@ -81,11 +81,48 @@ pub fn write_env_file<P: AsRef<Path>>(
     Ok(())
 }
 
+/// Validates a .env file format
+pub fn validate_env_file<P: AsRef<Path>>(path: P) -> Result<()> {
+    let file = File::open(path.as_ref())
+        .with_context(|| format!("Failed to open .env file: {:?}", path.as_ref()))?;
+
+    let reader = BufReader::new(file);
+
+    for (line_num, line_result) in reader.lines().enumerate() {
+        let line = line_result
+            .with_context(|| format!("Error reading line {} from .env file", line_num + 1))?;
+
+        // Skip empty lines and comments
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+
+        // Check for KEY=VALUE format
+        if !line.contains('=') {
+            return Err(anyhow::anyhow!(
+                "Invalid format at line {}: missing '=' character. Expected KEY=VALUE format.",
+                line_num + 1
+            ));
+        }
+
+        // Check for empty key
+        if line.starts_with('=') {
+            return Err(anyhow::anyhow!(
+                "Invalid format at line {}: empty key name. Expected KEY=VALUE format.",
+                line_num + 1
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::fs;
-    use tempfile::{tempdir, NamedTempFile};
+    use tempfile::tempdir;
 
     #[test]
     fn test_read_env_file_basic() {
@@ -380,41 +417,4 @@ KEY2=value2
         let result = validate_env_file("/nonexistent/path/file.env");
         assert!(result.is_err());
     }
-}
-
-/// Validates a .env file format
-pub fn validate_env_file<P: AsRef<Path>>(path: P) -> Result<()> {
-    let file = File::open(path.as_ref())
-        .with_context(|| format!("Failed to open .env file: {:?}", path.as_ref()))?;
-
-    let reader = BufReader::new(file);
-
-    for (line_num, line_result) in reader.lines().enumerate() {
-        let line = line_result
-            .with_context(|| format!("Error reading line {} from .env file", line_num + 1))?;
-
-        // Skip empty lines and comments
-        let trimmed = line.trim();
-        if trimmed.is_empty() || trimmed.starts_with('#') {
-            continue;
-        }
-
-        // Check for KEY=VALUE format
-        if !line.contains('=') {
-            return Err(anyhow::anyhow!(
-                "Invalid format at line {}: missing '=' character. Expected KEY=VALUE format.",
-                line_num + 1
-            ));
-        }
-
-        // Check for empty key
-        if line.starts_with('=') {
-            return Err(anyhow::anyhow!(
-                "Invalid format at line {}: empty key name. Expected KEY=VALUE format.",
-                line_num + 1
-            ));
-        }
-    }
-
-    Ok(())
 }

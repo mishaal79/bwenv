@@ -9,15 +9,15 @@ pub struct SecretsManagerClient {
 }
 
 impl SecretsManagerClient {
-    pub async fn new(access_token: String) -> Result<Self> {
+    pub async fn new(_access_token: String) -> Result<Self> {
         todo!("SDK client initialization pending")
     }
 
-    pub async fn get_secrets(&self, project_id: &str) -> Result<Vec<(String, String)>> {
+    pub async fn get_secrets(&self, _project_id: &str) -> Result<Vec<(String, String)>> {
         todo!("Get secrets implementation pending")
     }
 
-    pub async fn set_secret(&self, project_id: &str, key: &str, value: &str) -> Result<()> {
+    pub async fn set_secret(&self, _project_id: &str, _key: &str, _value: &str) -> Result<()> {
         todo!("Set secret implementation pending")
     }
 }
