@@ -17,16 +17,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Linux x86_64
-          - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
-            artifact_name: bwenv-linux-x86_64
-
-          # Linux ARM64
-          - target: aarch64-unknown-linux-gnu
-            os: ubuntu-latest
-            artifact_name: bwenv-linux-arm64
-
           # macOS x86_64 (Intel)
           - target: x86_64-apple-darwin
             os: macos-latest
@@ -36,6 +26,9 @@ jobs:
           - target: aarch64-apple-darwin
             os: macos-latest
             artifact_name: bwenv-macos-arm64
+
+          # Linux builds disabled due to rustls-platform-verifier compatibility
+          # TODO: Re-enable when dependency is updated
 
     steps:
       - name: Checkout code
@@ -67,30 +60,13 @@ jobs:
           path: target
           key: ${{ runner.os }}-${{ matrix.target }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install cross-compilation tools (Linux ARM64)
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
-
       - name: Build release binary
         uses: actions-rs/cargo@v1
         with:
-          use-cross: ${{ matrix.os == 'ubuntu-latest' && matrix.target == 'aarch64-unknown-linux-gnu' }}
           command: build
           args: --release --target ${{ matrix.target }}
 
-      - name: Strip binary (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
-            aarch64-linux-gnu-strip target/${{ matrix.target }}/release/bwenv
-          else
-            strip target/${{ matrix.target }}/release/bwenv
-          fi
-
-      - name: Strip binary (macOS)
-        if: matrix.os == 'macos-latest'
+      - name: Strip binary
         run: strip target/${{ matrix.target }}/release/bwenv
 
       - name: Create artifact
@@ -143,8 +119,6 @@ jobs:
           prerelease: false
           generate_release_notes: true
           files: |
-            artifacts/bwenv-linux-x86_64/bwenv-linux-x86_64
-            artifacts/bwenv-linux-arm64/bwenv-linux-arm64
             artifacts/bwenv-macos-x86_64/bwenv-macos-x86_64
             artifacts/bwenv-macos-arm64/bwenv-macos-arm64
             artifacts/*/checksums.txt
